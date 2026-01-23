@@ -67,15 +67,15 @@ const App: React.FC = () => {
       <main className="flex-1 lg:ml-72 p-10 lg:p-20">
         <header className="mb-20 flex justify-between items-baseline no-print">
           <div>
-            <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.6em]">ADVERTSGEN OPERATIONAL OS</span>
-            <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mt-3">{currentView.replace('_', ' ')}</h2>
+            <span className="text-[12px] font-semibold text-slate-400 uppercase tracking-[0.4em]">ADVERTSGEN OPERATIONAL OS</span>
+            <h2 className="text-4xl font-medium text-slate-900 tracking-tight mt-3">{currentView.replace('_', ' ')}</h2>
           </div>
           <div className="flex items-center gap-6 hidden md:flex">
              <div className="px-8 py-4 bg-white rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3">
                 <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">CLOUD SYNC</p>
-                  <p className="text-[11px] font-black text-slate-900 uppercase">OPERATIONAL</p>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">CLOUD SYNC</p>
+                  <p className="text-[11px] font-medium text-slate-900 uppercase">OPERATIONAL</p>
                 </div>
              </div>
           </div>

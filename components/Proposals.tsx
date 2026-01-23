@@ -28,40 +28,18 @@ const Proposals: React.FC<ProposalsProps> = ({ proposals, onAddProposal }) => {
     e.preventDefault();
     setLoading(true);
     
-    // Default strategic content based on template
-    const defaultSections: ProposalSection[] = [
-      { 
-        title: 'PROJECT OBJECTIVE', 
-        content: templateType === 'ENTERPRISE' 
-          ? `High-scale strategic deployment for ${formData.project} aiming for market dominance.` 
-          : `Dedicated growth strategy focused on ${formData.project} execution.`,
-        type: 'SUMMARY'
-      },
-      {
-        title: 'EXECUTION TIMELINE',
-        content: `Standardized ${formData.duration} roadmap divided into strategic sprints.`,
-        type: 'TIMELINE'
-      },
-      {
-        title: 'TERMS & CONDITIONS',
-        content: `Standard AdvertsGen service level agreement applies. Advance of ${formData.advance} required.`,
-        type: 'TERMS'
-      }
-    ];
-
     const aiSections = await generateTemplateProposal(formData.client, formData.industry, formData.project, formData.scope);
-    const finalSections = aiSections.length > 0 ? aiSections : defaultSections;
     
     const newProp: Proposal = {
       id: Math.random().toString(36).substr(2, 9),
       clientName: formData.client,
       clientIndustry: formData.industry,
       projectTitle: formData.project,
-      duration: formData.duration || 'Not specified',
+      duration: formData.duration || 'Flexible',
       templateType: templateType,
-      sections: finalSections,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-      quoteNo: `AG-QT-${Date.now().toString().slice(-4)}`,
+      sections: aiSections,
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      quoteNo: `AG-QT-${Math.floor(Math.random() * 9000 + 1000)}`,
       totalAmount: parseFloat(formData.total) || 0,
       advanceAmount: parseFloat(formData.advance) || 0
     };
@@ -72,126 +50,82 @@ const Proposals: React.FC<ProposalsProps> = ({ proposals, onAddProposal }) => {
     setFormData({ client: '', industry: '', project: '', duration: '', total: '', advance: '', scope: '' });
   };
 
-  const generateProposalPDF = (prop: Proposal) => {
+  const generatePDF = (prop: Proposal) => {
     const doc = new jsPDF();
-    const googleBlue = "#2563eb";
-    const margin = 20;
-
-    doc.setFillColor(googleBlue);
-    doc.rect(0, 0, 210, 20, 'F');
-    
+    const gBlue = "#4285F4";
+    doc.setFillColor(gBlue);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(26);
-    doc.setTextColor(googleBlue);
-    doc.text("ADVERTSGEN", margin, 45);
+    doc.setFontSize(28);
+    doc.text("ADVERTSGEN", 20, 25);
     doc.setFontSize(10);
-    doc.setTextColor(150);
-    doc.text(`${prop.templateType} PROJECT PROPOSAL`, margin, 52);
+    doc.text(`${prop.templateType} PACKAGE • ${prop.quoteNo}`, 20, 32);
 
-    doc.setFontSize(11);
-    doc.setTextColor(0);
-    doc.text(`QUOTE: ${prop.quoteNo}`, 145, 45);
+    doc.setTextColor(32, 33, 36);
+    doc.setFontSize(14);
+    doc.text("PROJECT PROPOSAL", 20, 60);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`DATE: ${prop.date}`, 145, 52);
+    doc.text(`Prepared for: ${prop.clientName}`, 20, 68);
+    doc.text(`Date: ${prop.date}`, 20, 73);
 
-    let y = 75;
-    doc.setDrawColor(240);
-    doc.line(margin, y, 190, y);
-    y += 15;
-    
-    doc.setFont("helvetica", "bold");
-    doc.text("CLIENT ENTITY", margin, y);
-    doc.text("DURATION", 145, y);
-    y += 8;
-    doc.setFont("helvetica", "normal");
-    doc.text(prop.clientName.toUpperCase(), margin, y);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(googleBlue);
-    doc.text(prop.duration.toUpperCase(), 145, y);
-    
-    y += 20;
-    doc.setTextColor(0);
-    doc.setFont("helvetica", "bold");
-    doc.text("PROJECT FOCUS:", margin, y);
-    y += 8;
-    doc.setFont("helvetica", "normal");
-    doc.text(prop.projectTitle.toUpperCase(), margin, y);
-
-    y += 25;
-    prop.sections.forEach(section => {
+    let y = 90;
+    prop.sections.forEach(s => {
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(50);
-      doc.text(section.title.toUpperCase(), margin, y);
-      y += 10;
-      doc.setTextColor(100);
+      doc.text(s.title.toUpperCase(), 20, y);
+      y += 7;
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      const splitText = doc.splitTextToSize(section.content, 170);
-      doc.text(splitText, margin, y);
-      y += (splitText.length * 6) + 15;
+      const split = doc.splitTextToSize(s.content, 170);
+      doc.text(split, 20, y);
+      y += (split.length * 6) + 15;
+      if (y > 270) { doc.addPage(); y = 20; }
     });
 
-    if (y > 230) { doc.addPage(); y = 30; }
-    doc.setFillColor(248, 250, 252);
-    doc.rect(margin, y, 170, 50, 'F');
-    y += 15;
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0);
-    doc.text("TOTAL INVESTMENT:", margin + 10, y);
-    doc.text(`RS ${prop.totalAmount.toLocaleString()}`, 145, y);
-    y += 12;
-    doc.setTextColor(googleBlue);
-    doc.text("ADVANCE REQUIRED:", margin + 10, y);
-    doc.text(`RS ${prop.advanceAmount.toLocaleString()}`, 145, y);
-    y += 12;
-    doc.setTextColor(239, 68, 68);
-    doc.text("BALANCE ON DELIVERY:", margin + 10, y);
-    doc.text(`RS ${(prop.totalAmount - prop.advanceAmount).toLocaleString()}`, 145, y);
-
-    doc.setTextColor(180);
-    doc.setFontSize(9);
-    doc.text("ADVERTSGEN OPERATIONAL OS | GENERATED VIA SECURE PORTAL", 105, 285, { align: 'center' });
-
-    doc.save(`${prop.quoteNo}_${prop.clientName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`${prop.quoteNo}_Proposal.pdf`);
   };
 
+  const templates = [
+    { type: 'STARTER', color: '#4285F4', desc: 'Basic Service Package' },
+    { type: 'GROWTH', color: '#34A853', desc: 'Standard Strategic Growth' },
+    { type: 'ENTERPRISE', color: '#FBBC05', desc: 'Full Scale Operations' }
+  ];
+
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-10 rounded-[3rem] border-l-[16px] border-amber-400 shadow-xl gap-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="bg-white p-8 rounded-xl border border-[#dadce0] google-shadow flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
-          <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">DEAL ENGINE</h2>
-          <p className="text-slate-400 font-bold text-[12px] uppercase tracking-[0.4em] mt-2">INSTANT STRATEGIC PROPOSALS</p>
+          <h2 className="text-3xl font-medium text-[#202124] tracking-tight uppercase">Proposal Studio</h2>
+          <p className="text-[#5f6368] font-medium text-sm uppercase tracking-wider mt-1">Strategic Deal Crafting</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
-          className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black shadow-2xl hover:scale-105 transition-all text-xs tracking-[0.2em] uppercase"
+          className="bg-[#202124] text-white px-8 py-4 rounded-lg font-medium shadow-md hover:bg-black transition-colors text-xs tracking-widest uppercase"
         >
-          GENERATE PROPOSAL
+          Draft Proposal
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {proposals.length === 0 ? (
-          <div className="col-span-full py-40 text-center text-slate-300 font-black uppercase tracking-[0.6em] text-sm">NO PROJECT QUOTES FOUND</div>
+          <div className="col-span-full py-20 text-center text-[#bdc1c6] font-medium uppercase tracking-widest">No Strategic Quotes Prepared</div>
         ) : (
           proposals.map(p => (
-            <div key={p.id} className="bg-white p-10 rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all border-t-8 border-amber-400 group cursor-pointer" onClick={() => setActiveProposal(p)}>
-               <div className="flex justify-between items-center mb-8">
-                  <span className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${
-                    p.templateType === 'ENTERPRISE' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>{p.templateType}</span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{p.date}</span>
-               </div>
-               <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors leading-tight mb-2">{p.clientName}</h3>
-               <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">{p.projectTitle}</p>
-               <div className="pt-8 border-t border-slate-50 flex justify-between items-center">
-                  <div>
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">TOTAL VALUATION</p>
-                    <p className="text-xl font-black text-slate-900 tracking-tighter">RS {p.totalAmount.toLocaleString()}</p>
+            <div key={p.id} className="bg-white p-8 rounded-xl border border-[#dadce0] hover:shadow-lg transition-all cursor-pointer group" onClick={() => setActiveProposal(p)}>
+               <div className="flex justify-between items-start mb-6">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold text-xs ${
+                    p.templateType === 'ENTERPRISE' ? 'bg-[#FBBC05]' : p.templateType === 'GROWTH' ? 'bg-[#34A853]' : 'bg-[#4285F4]'
+                  }`}>
+                    {p.templateType[0]}
                   </div>
-                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
+                  <span className="text-[10px] font-medium text-[#bdc1c6] uppercase tracking-widest">{p.date}</span>
+               </div>
+               <h3 className="text-xl font-medium text-[#202124] uppercase tracking-tight leading-tight mb-1 group-hover:text-[#4285F4] transition-colors">{p.clientName}</h3>
+               <p className="text-[11px] font-medium text-[#5f6368] uppercase tracking-wider mb-8">{p.projectTitle}</p>
+               <div className="pt-6 border-t border-[#f1f3f4] flex justify-between items-center">
+                  <p className="text-lg font-semibold text-[#202124]">RS {p.totalAmount.toLocaleString()}</p>
+                  <div className="w-8 h-8 rounded-full border border-[#dadce0] flex items-center justify-center text-[#bdc1c6] group-hover:bg-[#4285F4] group-hover:text-white group-hover:border-[#4285F4] transition-all">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
                   </div>
                </div>
             </div>
@@ -200,65 +134,57 @@ const Proposals: React.FC<ProposalsProps> = ({ proposals, onAddProposal }) => {
       </div>
 
       {activeProposal && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-3xl z-[300] p-10 flex flex-col items-center overflow-y-auto">
-           <div className="w-full max-w-5xl mb-12 flex justify-between items-center">
-              <button onClick={() => setActiveProposal(null)} className="font-black text-white flex items-center gap-4 uppercase text-xs tracking-[0.3em] hover:text-blue-400 transition-colors">
-                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                 CLOSE PREVIEW
+        <div className="fixed inset-0 bg-[#202124]/90 backdrop-blur-md z-[300] p-6 flex flex-col items-center overflow-y-auto">
+           <div className="w-full max-w-4xl mb-8 flex justify-between items-center">
+              <button onClick={() => setActiveProposal(null)} className="font-semibold text-white text-xs uppercase tracking-widest flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                Back to List
               </button>
-              <button onClick={() => generateProposalPDF(activeProposal)} className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:scale-105 transition-all">
-                DOWNLOAD PDF VERSION
-              </button>
+              <button onClick={() => generatePDF(activeProposal)} className="bg-[#4285F4] text-white px-8 py-3 rounded-lg font-semibold uppercase text-xs tracking-widest shadow-xl">Download PDF</button>
            </div>
            
-           <div className="bg-white w-full max-w-5xl rounded-[3rem] p-24 shadow-2xl border-t-[20px] border-blue-600">
-              <div className="flex justify-between items-start mb-24">
+           <div className="bg-white w-full max-w-4xl rounded-2xl p-16 shadow-2xl relative">
+              <div className="absolute top-0 left-0 w-full h-4 bg-[#4285F4] rounded-t-2xl"></div>
+              <div className="flex justify-between items-start mb-16">
+                 <div>
+                    <h1 className="text-4xl font-medium text-[#202124] tracking-tight uppercase leading-none">Strategic Proposal</h1>
+                    <p className="text-sm font-medium text-[#4285F4] tracking-[0.2em] mt-4 uppercase">{activeProposal.quoteNo}</p>
+                 </div>
+                 <div className="text-right">
+                    <p className="text-[10px] font-semibold text-[#bdc1c6] uppercase tracking-widest mb-1">Issue Date</p>
+                    <p className="text-sm font-medium text-[#202124]">{activeProposal.date}</p>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16 pb-8 border-b border-[#f1f3f4]">
                 <div>
-                   <div className="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white font-black text-2xl mb-6 shadow-xl shadow-blue-600/30">AG</div>
-                   <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">STRATEGIC<br/>PROPOSAL</h1>
-                   <p className="text-sm font-black text-blue-600 tracking-[0.4em] mt-4 uppercase">{activeProposal.quoteNo}</p>
+                  <p className="text-[10px] font-semibold text-[#bdc1c6] uppercase tracking-widest mb-2">Client</p>
+                  <p className="text-2xl font-medium text-[#202124] uppercase tracking-tight">{activeProposal.clientName}</p>
+                  <p className="text-[10px] font-medium text-[#4285F4] uppercase tracking-widest mt-1">{activeProposal.clientIndustry}</p>
                 </div>
-                <div className="text-right">
-                   <p className="text-[11px] font-black text-slate-300 uppercase tracking-widest mb-2">ISSUANCE DATE</p>
-                   <p className="text-lg font-black text-slate-900 uppercase">{activeProposal.date}</p>
+                <div className="md:text-right">
+                  <p className="text-[10px] font-semibold text-[#bdc1c6] uppercase tracking-widest mb-2">Duration</p>
+                  <p className="text-2xl font-medium text-[#202124] uppercase tracking-tight">{activeProposal.duration}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-16 mb-24 pb-12 border-b-4 border-slate-50">
-                <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">CLIENT ENTITY</p>
-                  <p className="text-3xl font-black text-slate-900 uppercase tracking-tight">{activeProposal.clientName}</p>
-                  <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest mt-2">{activeProposal.clientIndustry}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">EXPECTED DURATION</p>
-                  <p className="text-3xl font-black text-slate-900 uppercase tracking-tight">{activeProposal.duration}</p>
-                  <p className="text-[11px] font-black text-amber-500 uppercase tracking-widest mt-2">{activeProposal.projectTitle}</p>
-                </div>
-              </div>
-
-              <div className="space-y-20">
-                {activeProposal.sections.map((s, idx) => (
-                  <div key={idx} className="group">
-                    <h4 className="text-[12px] font-black text-blue-600 uppercase tracking-[0.5em] mb-6 group-hover:translate-x-2 transition-transform">{s.title}</h4>
-                    <p className="text-xl text-slate-700 font-bold leading-relaxed max-w-3xl">{s.content}</p>
+              <div className="space-y-12 mb-16">
+                {activeProposal.sections.map((s, i) => (
+                  <div key={i}>
+                    <h4 className="text-[11px] font-semibold text-[#4285F4] uppercase tracking-widest mb-3">{s.title}</h4>
+                    <p className="text-lg text-[#3c4043] font-normal leading-relaxed">{s.content}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-24 bg-slate-900 rounded-[3rem] p-16 text-white shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full -mr-32 -mt-32"></div>
-                <div className="flex justify-between items-center mb-10 text-slate-400">
-                  <span className="text-[11px] font-black uppercase tracking-[0.4em]">TOTAL PROJECT FEE</span>
-                  <span className="text-3xl font-black tracking-tighter text-white">RS {activeProposal.totalAmount.toLocaleString()}</span>
+              <div className="bg-[#f8f9fa] rounded-xl p-8 border border-[#dadce0]">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-semibold text-[#5f6368] uppercase">Project Total</span>
+                  <span className="text-2xl font-semibold text-[#202124]">RS {activeProposal.totalAmount.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center mb-10 text-blue-400">
-                  <span className="text-[11px] font-black uppercase tracking-[0.4em]">ADVANCE REQUIRED</span>
-                  <span className="text-3xl font-black tracking-tighter">RS {activeProposal.advanceAmount.toLocaleString()}</span>
-                </div>
-                <div className="pt-10 border-t border-white/10 flex justify-between items-center text-red-400">
-                  <span className="text-[11px] font-black uppercase tracking-[0.4em]">REMAINING BALANCE</span>
-                  <span className="text-4xl font-black tracking-tighter">RS {(activeProposal.totalAmount - activeProposal.advanceAmount).toLocaleString()}</span>
+                <div className="flex justify-between items-center text-[#34A853]">
+                  <span className="text-xs font-semibold uppercase">Advance (Immediate)</span>
+                  <span className="text-xl font-semibold">RS {activeProposal.advanceAmount.toLocaleString()}</span>
                 </div>
               </div>
            </div>
@@ -266,57 +192,57 @@ const Proposals: React.FC<ProposalsProps> = ({ proposals, onAddProposal }) => {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[400] flex items-center justify-center p-8 overflow-y-auto">
-          <div className="bg-white rounded-[3.5rem] w-full max-w-2xl p-16 shadow-2xl my-auto animate-in zoom-in duration-300">
-            <h3 className="text-3xl font-black mb-12 tracking-tighter uppercase text-slate-900 border-b-8 border-amber-400 inline-block pb-4">GENERATE DEAL</h3>
+        <div className="fixed inset-0 bg-[#202124]/70 backdrop-blur-sm z-[400] flex items-center justify-center p-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-2xl p-10 shadow-2xl my-auto animate-in zoom-in duration-200 border-t-[12px] border-[#FBBC05]">
+            <h3 className="text-2xl font-medium mb-8 tracking-tight uppercase text-[#202124]">Draft Strategy</h3>
             
-            <form onSubmit={handleGenerate} className="space-y-8">
-               <div className="flex gap-4 p-2 bg-slate-100 rounded-3xl mb-8">
-                 {(['STARTER', 'GROWTH', 'ENTERPRISE'] as const).map(type => (
-                   <button key={type} type="button" onClick={() => setTemplateType(type)} className={`flex-1 py-4 rounded-2xl font-black text-[10px] tracking-widest transition-all ${
-                     templateType === type ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400 hover:text-slate-600'
+            <form onSubmit={handleGenerate} className="space-y-6">
+               <div className="flex gap-2 p-1 bg-[#f1f3f4] rounded-lg">
+                 {templates.map(t => (
+                   <button key={t.type} type="button" onClick={() => setTemplateType(t.type as any)} className={`flex-1 py-3 rounded-md font-semibold text-[10px] tracking-widest transition-all ${
+                     templateType === t.type ? 'bg-white text-[#202124] shadow-sm' : 'text-[#5f6368] hover:text-[#202124]'
                    }`}>
-                     {type}
+                     {t.type}
                    </button>
                  ))}
                </div>
 
-               <div className="space-y-4">
-                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">CLIENT ENTITY NAME</label>
-                  <input required className="w-full p-6 bg-slate-50 border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-black text-sm uppercase transition-all" 
+               <div className="space-y-2">
+                  <label className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-widest">Client Name</label>
+                  <input required className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-lg outline-none font-medium text-sm uppercase focus:ring-1 focus:ring-[#4285F4]" 
                     value={formData.client} onChange={e => setFormData({...formData, client: e.target.value})} />
                </div>
 
-               <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                      <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">PROJECT THEME</label>
-                      <input required className="w-full p-6 bg-slate-50 border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-black text-sm uppercase transition-all" 
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                      <label className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-widest">Focus Theme</label>
+                      <input required className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-lg font-medium text-sm uppercase" 
                         value={formData.project} onChange={e => setFormData({...formData, project: e.target.value})} />
                   </div>
-                  <div className="space-y-4">
-                      <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">DURATION (E.G. 12 WEEKS)</label>
-                      <input required className="w-full p-6 bg-slate-50 border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-black text-sm uppercase transition-all" 
+                  <div className="space-y-2">
+                      <label className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-widest">Timeline</label>
+                      <input required className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-lg font-medium text-sm uppercase" 
                         value={formData.duration} onChange={e => setFormData({...formData, duration: e.target.value})} />
                   </div>
                </div>
 
-               <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                      <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">TOTAL FEE RS</label>
-                      <input required type="number" className="w-full p-6 bg-slate-50 border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-black text-sm transition-all" 
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                      <label className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-widest">Total Value (RS)</label>
+                      <input required type="number" className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-lg font-medium text-sm" 
                         value={formData.total} onChange={e => setFormData({...formData, total: e.target.value})} />
                   </div>
-                  <div className="space-y-4">
-                      <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">ADVANCE RS</label>
-                      <input required type="number" className="w-full p-6 bg-slate-50 border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-black text-sm transition-all" 
+                  <div className="space-y-2">
+                      <label className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-widest">Advance (RS)</label>
+                      <input required type="number" className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-lg font-medium text-sm" 
                         value={formData.advance} onChange={e => setFormData({...formData, advance: e.target.value})} />
                   </div>
                </div>
 
-               <div className="flex gap-8 pt-10">
-                  <button type="button" onClick={() => setShowModal(false)} className="px-10 py-6 font-black text-slate-400 uppercase text-xs tracking-widest hover:text-slate-900 transition-colors">ABANDON</button>
-                  <button type="submit" disabled={loading} className="flex-1 bg-slate-900 text-white rounded-3xl py-6 font-black uppercase text-xs tracking-[0.2em] shadow-2xl flex items-center justify-center gap-4 hover:scale-105 transition-all">
-                     {loading ? <div className="w-6 h-6 border-4 border-white border-t-transparent animate-spin rounded-full"></div> : "GENERATE STRATEGY"}
+               <div className="flex gap-4 pt-8">
+                  <button type="button" onClick={() => setShowModal(false)} className="px-6 py-4 font-semibold text-[#5f6368] uppercase text-xs tracking-widest hover:bg-[#f1f3f4] rounded-lg transition-colors">Abort</button>
+                  <button type="submit" disabled={loading} className="flex-1 bg-[#4285F4] text-white rounded-lg py-4 font-medium uppercase text-xs tracking-widest shadow-md flex items-center justify-center gap-3 hover:bg-[#1967d2] transition-colors">
+                     {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full"></div> : "Confirm & Build"}
                   </button>
                </div>
             </form>

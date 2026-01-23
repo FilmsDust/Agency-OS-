@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Invoice, InvoiceStatus, Client, InvoiceItem } from '../types';
+import { jsPDF } from 'jspdf';
 
 interface InvoicesProps {
   invoices: Invoice[];
@@ -13,11 +14,11 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, clients, onAddInvoice, on
   const [showModal, setShowModal] = useState(false);
   const [clientId, setClientId] = useState('');
   const [items, setItems] = useState<InvoiceItem[]>([
-    { id: '1', description: 'Core Strategy & Design', quantity: 1, unitPrice: 50000 }
+    { id: '1', description: 'Strategic Planning', quantity: 1, unitPrice: 25000 }
   ]);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0), [items]);
-  const tax = subtotal * 0.16; // Standard 16% Tax
+  const tax = subtotal * 0.16; // 16% GST
   const grandTotal = subtotal + tax;
 
   const addItem = () => {
@@ -30,6 +31,36 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, clients, onAddInvoice, on
 
   const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
     setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
+  };
+
+  const exportInvoicesPDF = () => {
+    const doc = new jsPDF();
+    doc.setFillColor(66, 133, 244);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text("INVOICE DIRECTORY", 20, 25);
+    
+    doc.setTextColor(32, 33, 36);
+    doc.setFontSize(10);
+    let y = 60;
+    doc.text("Ref", 20, y);
+    doc.text("Client", 50, y);
+    doc.text("Amount", 140, y);
+    doc.text("Status", 180, y);
+    y += 10;
+    
+    doc.setFont("helvetica", "normal");
+    invoices.forEach(inv => {
+      doc.text(inv.invoiceNumber, 20, y);
+      doc.text(inv.clientName.substring(0, 20), 50, y);
+      doc.text(`RS ${inv.total.toLocaleString()}`, 140, y);
+      doc.text(inv.status, 180, y);
+      y += 10;
+      if (y > 280) { doc.addPage(); y = 20; }
+    });
+    doc.save("AdvertsGen_Invoices.pdf");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -56,130 +87,143 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, clients, onAddInvoice, on
     onAddInvoice(newInvoice);
     setShowModal(false);
     setClientId('');
-    setItems([{ id: '1', description: 'Core Strategy & Design', quantity: 1, unitPrice: 50000 }]);
+    setItems([{ id: '1', description: 'Strategic Planning', quantity: 1, unitPrice: 25000 }]);
   };
 
   const formatCurrency = (val: number) => `RS ${val.toLocaleString()}`;
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-10 rounded-[3rem] border-b-[12px] border-blue-600 shadow-xl gap-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="bg-white p-8 rounded-xl border-l-[12px] border-[#4285F4] google-shadow flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
-          <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">BILLING ENGINE</h2>
-          <p className="text-slate-400 font-bold text-[12px] uppercase tracking-[0.4em] mt-2">ITEMIZED ACCOUNTS RECEIVABLE</p>
+          <h2 className="text-3xl font-medium text-[#202124] tracking-tight uppercase">Billing Hub</h2>
+          <p className="text-[#5f6368] font-medium text-sm uppercase tracking-wider mt-1">Accounts Receivable & Dispatches</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black shadow-2xl shadow-blue-600/30 hover:scale-105 transition-all text-xs tracking-[0.2em] uppercase"
-        >
-          CREATE NEW BILL
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={exportInvoicesPDF}
+            className="bg-white border-2 border-[#4285F4] text-[#4285F4] px-6 py-4 rounded-xl font-medium text-xs tracking-widest uppercase hover:bg-[#e8f0fe] transition-colors"
+          >
+            Export List PDF
+          </button>
+          <button 
+            onClick={() => setShowModal(true)}
+            className="bg-[#4285F4] text-white px-8 py-4 rounded-xl font-medium shadow-lg hover:bg-[#1967d2] transition-colors text-xs tracking-widest uppercase"
+          >
+            Create Invoice
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[3rem] border border-slate-100 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b-4 border-slate-100 text-slate-500 font-black uppercase tracking-[0.3em] text-[11px]">
-              <tr>
-                <th className="px-12 py-10">ENTITY & BILL NO</th>
-                <th className="px-12 py-10 text-right">FEE (INC TAX)</th>
-                <th className="px-12 py-10 text-right">STATUS</th>
-                <th className="px-12 py-10 text-right">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y-2 divide-slate-100 text-[15px] font-bold text-slate-700">
-              {invoices.length === 0 ? (
-                <tr><td colSpan={4} className="p-40 text-center text-slate-300 font-black uppercase tracking-[0.6em] text-sm">ZERO ACTIVE BILLS</td></tr>
-              ) : (
-                invoices.map((inv, idx) => (
-                  <tr key={inv.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/20'} hover:bg-blue-50/50 transition-colors`}>
-                    <td className="px-12 py-10">
-                      <div className="font-black text-slate-900 uppercase tracking-tight text-lg">{inv.clientName}</div>
-                      <div className="text-[11px] text-slate-400 font-black tracking-widest uppercase mt-2">{inv.invoiceNumber} • DUE {inv.dueDate}</div>
-                    </td>
-                    <td className="px-12 py-10 text-right font-black text-slate-900 text-lg">{formatCurrency(inv.total)}</td>
-                    <td className="px-12 py-10 text-right">
-                      <span className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-md ${inv.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className="px-12 py-10 text-right">
-                       <button className="text-slate-400 hover:text-blue-600 font-black text-[12px] uppercase tracking-widest transition-colors">VIEW LEDGER</button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="bg-white rounded-xl border border-[#dadce0] overflow-hidden google-shadow">
+        <table className="w-full text-left">
+          <thead className="bg-[#f8f9fa] border-b border-[#dadce0] text-[#5f6368] font-semibold uppercase tracking-wider text-[11px]">
+            <tr>
+              <th className="px-8 py-6">Reference / Entity</th>
+              <th className="px-8 py-6 text-right">Volume (PKR)</th>
+              <th className="px-8 py-6 text-right">State</th>
+              <th className="px-8 py-6 text-right">Utility</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#dadce0] text-sm text-[#3c4043]">
+            {invoices.length === 0 ? (
+              <tr><td colSpan={4} className="p-32 text-center text-[#bdc1c6] font-medium uppercase tracking-widest">Ledger Empty</td></tr>
+            ) : (
+              invoices.map((inv) => (
+                <tr key={inv.id} className="hover:bg-[#f8f9fa] transition-colors">
+                  <td className="px-8 py-6">
+                    <div className="font-semibold text-[#202124] uppercase tracking-tight text-base leading-none">{inv.clientName}</div>
+                    <div className="text-[10px] text-[#5f6368] font-medium tracking-widest uppercase mt-2">{inv.invoiceNumber}</div>
+                  </td>
+                  <td className="px-8 py-6 text-right font-semibold text-[#202124] text-lg">{formatCurrency(inv.total)}</td>
+                  <td className="px-8 py-6 text-right">
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-widest ${
+                      inv.status === 'PAID' ? 'bg-[#e6f4ea] text-[#34A853]' : 'bg-[#e8f0fe] text-[#4285F4]'
+                    }`}>
+                      {inv.status}
+                    </span>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    <button className="text-[#4285F4] hover:underline font-semibold text-[11px] uppercase tracking-widest">Detail View</button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[200] flex items-center justify-center p-8 overflow-y-auto">
-          <div className="bg-white rounded-[3.5rem] w-full max-w-4xl p-16 shadow-2xl my-auto animate-in zoom-in duration-300">
-            <div className="flex justify-between items-start mb-16 border-b-8 border-blue-600 pb-6">
-              <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900">INSTANT BILLING</h3>
-              <div className="text-right">
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">SYSTEM DATE</p>
-                <p className="text-sm font-black text-slate-900 uppercase">{new Date().toLocaleDateString('en-GB')}</p>
-              </div>
+        <div className="fixed inset-0 bg-[#202124]/80 backdrop-blur-md z-[200] flex items-center justify-center p-8 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-4xl p-12 shadow-2xl animate-in zoom-in duration-200 my-auto border-t-[16px] border-[#4285F4]">
+            <div className="flex justify-between items-center mb-10 border-b border-[#dadce0] pb-6">
+              <h3 className="text-3xl font-medium uppercase tracking-tighter text-[#202124]">Instant Generation</h3>
+              <button onClick={() => setShowModal(false)} className="text-[#5f6368] hover:text-[#202124] transition-colors">
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-12">
-               <div className="space-y-5">
-                 <label className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">TARGET CLIENT ENTITY</label>
-                 <select required className="w-full p-6 bg-slate-50 rounded-2xl outline-none font-black text-sm uppercase border-2 border-transparent focus:border-blue-600 transition-all shadow-inner" value={clientId} onChange={e => setClientId(e.target.value)}>
-                   <option value="">SELECT FROM DIRECTORY</option>
-                   {clients.map(c => <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>)}
-                 </select>
+            <form onSubmit={handleSubmit} className="space-y-10">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                 <div className="space-y-4">
+                   <label className="text-[11px] font-semibold uppercase tracking-widest text-[#5f6368]">Entity Search</label>
+                   <select required className="w-full p-5 bg-[#f8f9fa] border border-[#dadce0] focus:border-[#4285F4] rounded-xl font-medium text-sm uppercase transition-all outline-none" value={clientId} onChange={e => setClientId(e.target.value)}>
+                     <option value="">-- Search Directory --</option>
+                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                   </select>
+                 </div>
+                 <div className="space-y-4">
+                   <label className="text-[11px] font-semibold uppercase tracking-widest text-[#5f6368]">Disbursement Window</label>
+                   <div className="p-5 bg-[#f8f9fa] border border-[#dadce0] rounded-xl font-medium text-sm text-[#5f6368] uppercase tracking-widest">Immediate Release</div>
+                 </div>
                </div>
 
                <div className="space-y-6">
-                 <div className="flex justify-between items-end">
-                    <label className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">BILLABLE LINE ITEMS</label>
-                    <button type="button" onClick={addItem} className="text-[10px] font-black uppercase text-blue-600 tracking-widest">+ ADD ROW</button>
+                 <div className="flex justify-between items-center">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-[#5f6368]">Billable Deliverables</label>
+                    <button type="button" onClick={addItem} className="text-[#4285F4] font-semibold text-xs uppercase hover:underline tracking-widest">+ Add Line</button>
                  </div>
                  
                  <div className="space-y-4">
-                    {items.map((item, idx) => (
-                      <div key={item.id} className="grid grid-cols-12 gap-4 items-center animate-in slide-in-from-left-4">
+                    {items.map((item) => (
+                      <div key={item.id} className="grid grid-cols-12 gap-4 items-center">
                         <div className="col-span-6">
-                          <input required placeholder="Service Description" className="w-full p-4 bg-slate-50 rounded-xl font-bold text-xs" value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} />
+                          <input required placeholder="Deliverable Description" className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-xl font-medium text-xs" value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} />
                         </div>
                         <div className="col-span-2">
-                          <input required type="number" placeholder="Qty" className="w-full p-4 bg-slate-50 rounded-xl font-bold text-xs text-center" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)} />
+                          <input required type="number" placeholder="Qty" className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-xl font-medium text-xs text-center" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)} />
                         </div>
                         <div className="col-span-3">
-                          <input required type="number" placeholder="Unit Price" className="w-full p-4 bg-slate-50 rounded-xl font-bold text-xs" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                          <input required type="number" placeholder="Valuation" className="w-full p-4 bg-[#f8f9fa] border border-[#dadce0] rounded-xl font-medium text-xs" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
                         </div>
                         <div className="col-span-1 text-center">
-                          <button type="button" onClick={() => removeItem(item.id)} className="text-red-400 font-bold hover:text-red-600">✕</button>
+                          <button type="button" onClick={() => removeItem(item.id)} className="text-[#EA4335] font-semibold hover:bg-[#fce8e6] w-10 h-10 rounded-full transition-colors">✕</button>
                         </div>
                       </div>
                     ))}
                  </div>
                </div>
 
-               <div className="bg-slate-900 rounded-[2.5rem] p-12 text-white shadow-2xl">
-                 <div className="space-y-4">
-                    <div className="flex justify-between items-center text-slate-400">
-                      <span className="text-[11px] font-black uppercase tracking-widest">SUBTOTAL VOLUME</span>
-                      <span className="font-black tracking-tighter">{formatCurrency(subtotal)}</span>
+               <div className="bg-[#f8f9fa] p-10 rounded-2xl border border-[#dadce0] flex justify-end">
+                 <div className="space-y-4 w-full max-w-sm">
+                    <div className="flex justify-between text-sm text-[#5f6368] font-medium uppercase tracking-widest">
+                      <span>Volume</span>
+                      <span>{formatCurrency(subtotal)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-slate-400">
-                      <span className="text-[11px] font-black uppercase tracking-widest">GST / TAX (16%)</span>
-                      <span className="font-black tracking-tighter">{formatCurrency(tax)}</span>
+                    <div className="flex justify-between text-sm text-[#5f6368] font-medium uppercase tracking-widest">
+                      <span>Service Tax (16%)</span>
+                      <span>{formatCurrency(tax)}</span>
                     </div>
-                    <div className="flex justify-between items-center pt-6 border-t border-white/10">
-                      <span className="text-xl font-black uppercase tracking-tighter">GRAND TOTAL</span>
-                      <span className="text-3xl font-black tracking-tighter text-blue-400">{formatCurrency(grandTotal)}</span>
+                    <div className="flex justify-between pt-6 border-t border-[#dadce0] text-2xl font-semibold text-[#202124] tracking-tight">
+                      <span>Total Value</span>
+                      <span className="text-[#4285F4]">{formatCurrency(grandTotal)}</span>
                     </div>
                  </div>
                </div>
 
-               <div className="flex gap-8 pt-6">
-                 <button type="button" onClick={() => setShowModal(false)} className="px-10 py-6 font-black text-slate-400 uppercase text-xs tracking-widest hover:text-slate-900 transition-colors">DISCARD ENTRY</button>
-                 <button type="submit" className="flex-1 bg-blue-600 text-white rounded-3xl py-6 font-black uppercase text-xs tracking-[0.2em] shadow-2xl transition-transform hover:scale-105">DISPATCH INVOICE</button>
+               <div className="flex justify-end gap-6 pt-10">
+                 <button type="button" onClick={() => setShowModal(false)} className="px-8 py-5 font-semibold text-[#5f6368] uppercase text-xs tracking-widest hover:bg-[#f1f3f4] rounded-xl transition-colors">Discard</button>
+                 <button type="submit" className="bg-[#4285F4] text-white px-12 py-5 rounded-xl font-medium uppercase text-xs tracking-widest shadow-xl hover:bg-[#1967d2] transition-transform active:scale-95">Dispatch Statement</button>
                </div>
             </form>
           </div>

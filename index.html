@@ -8,29 +8,43 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --google-blue: #4285F4;
+            --google-red: #EA4335;
+            --google-yellow: #FBBC05;
+            --google-green: #34A853;
+        }
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
+            background-color: #f1f3f4;
+            color: #202124;
             -webkit-font-smoothing: antialiased;
         }
         @media print {
             .no-print { display: none !important; }
         }
-        /* Custom scrollbar for better visibility */
+        .google-shadow {
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+        }
+        .google-card {
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #dadce0;
+        }
+        /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #f1f5f9;
+            background: #f1f3f4;
         }
         ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: #dadce0;
             border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+            background: #bdc1c6;
         }
     </style>
 <script type="importmap">
