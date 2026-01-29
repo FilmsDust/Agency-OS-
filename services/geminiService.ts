@@ -37,25 +37,33 @@ export const chatWithAssistant = async (
 ) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const prompt = `
-    You are the AdvertsGen Finance Assistant. 
-    Current Data:
+  const systemPrompt = `
+    You are a Financial Intelligence Assistant for AdvertsGen Agency OS. 
+    Your role is to explain numbers, trends, and summaries in clear, human-friendly sentence-case language.
+    
+    Current Data Provided:
     Transactions: ${JSON.stringify(transactions)}
     Invoices: ${JSON.stringify(invoices)}
 
-    User Query: "${query}"
-
     Rules:
-    - Answer in plain, helpful language.
-    - Be concise (max 3-4 sentences).
-    - If asked about specific numbers, calculate them accurately from the data provided.
-    - Always use PKR (Rs.) for money.
+    - Calm, analytical, and professional tone.
+    - Approachable and empathetic.
+    - Clear but not robotic.
+    - Always sentence-case for explanations. Uppercase ONLY for small headers or emphasis.
+    - Calculate only from provided data. Never assume numbers.
+    - Highlight negative trends politely.
+    - Always include this subtle disclaimer at the end of every response: "Insights are based on your provided data. Please verify before making financial decisions."
+    - Be concise.
+    - Respond to "clear history" by stating: "To maintain your records, I cannot clear previous financial data automatically. You can start a new session manually if you wish."
   `;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: prompt,
+      contents: query,
+      config: {
+        systemInstruction: systemPrompt
+      }
     });
     return response.text || "I'm sorry, I couldn't process that. Try asking about your profit or expenses.";
   } catch (error) {

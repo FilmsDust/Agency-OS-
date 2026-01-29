@@ -1,157 +1,104 @@
 
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Transaction, Invoice, TransactionType, Staff } from '../types';
-import { jsPDF } from 'jspdf';
+import { Transaction, Invoice, TransactionType, Staff, Project, Lead } from '../types';
 
 interface DashboardProps {
   transactions: Transaction[];
   invoices: Invoice[];
   staff: Staff[];
+  projects: Project[];
+  leads: Lead[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, staff }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, staff, projects, leads }) => {
   const stats = useMemo(() => {
     const income = transactions.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
     const expenses = transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
     const totalInvoiced = invoices.reduce((sum, i) => sum + i.total, 0);
     const totalCollected = invoices.reduce((sum, i) => sum + i.advancePayment + i.paidAmount, 0);
     const totalOutstanding = totalInvoiced - totalCollected;
-    const salaryLiability = staff.filter(s => s.status === 'ACTIVE').reduce((sum, s) => sum + s.salary, 0);
-    const netProfit = income - expenses;
     
-    return { income, expenses, totalOutstanding, netProfit, salaryLiability };
-  }, [transactions, invoices, staff]);
-
-  const chartData = useMemo(() => {
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN'];
-    return months.map((name) => ({
-      name,
-      revenue: Math.floor(Math.random() * 500000 + 200000),
-      burn: Math.floor(Math.random() * 200000 + 100000)
-    }));
-  }, []);
-
-  const formatCurrency = (val: number) => `RS ${val.toLocaleString()}`;
-
-  const exportSummaryPDF = () => {
-    const doc = new jsPDF();
-    doc.setFillColor(66, 133, 244); // Google Blue
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.text("ADVERTSGEN EXECUTIVE SUMMARY", 20, 25);
+    const activeProjects = projects.filter(p => p.status === 'ACTIVE').length;
+    const pipelineValue = leads.filter(l => l.status !== 'WON' && l.status !== 'LOST').reduce((sum, l) => sum + l.value, 0);
     
-    doc.setTextColor(32, 33, 36);
-    doc.setFontSize(14);
-    doc.text("FINANCIAL POSITION", 20, 60);
-    
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Total Revenue: ${formatCurrency(stats.income)}`, 20, 75);
-    doc.text(`Total Expenses: ${formatCurrency(stats.expenses)}`, 20, 85);
-    doc.text(`Net Profit: ${formatCurrency(stats.netProfit)}`, 20, 95);
-    doc.text(`Accounts Receivable: ${formatCurrency(stats.totalOutstanding)}`, 20, 105);
-    doc.text(`Payroll Liability: ${formatCurrency(stats.salaryLiability)}`, 20, 115);
-    
-    doc.setDrawColor(218, 220, 224);
-    doc.line(20, 125, 190, 125);
-    
-    doc.setFont("helvetica", "bold");
-    doc.text("Generated on: " + new Date().toLocaleString(), 20, 140);
-    
-    doc.save("AdvertsGen_Summary.pdf");
-  };
+    return { income, expenses, totalOutstanding, activeProjects, pipelineValue };
+  }, [transactions, invoices, projects, leads]);
 
   const kpis = [
-    { label: 'Receivables', value: stats.totalOutstanding, color: '#4285F4', border: 'border-[#4285F4]' },
-    { label: 'Salary Payable', value: stats.salaryLiability, color: '#FBBC05', border: 'border-[#FBBC05]' },
-    { label: 'Total Revenue', value: stats.income, color: '#34A853', border: 'border-[#34A853]' },
-    { label: 'Cash Burn', value: stats.expenses, color: '#EA4335', border: 'border-[#EA4335]' },
+    { label: 'Active Projects', value: stats.activeProjects, color: '#202124', border: 'border-black' },
+    { label: 'Pipeline Value', value: `RS ${stats.pipelineValue.toLocaleString()}`, color: '#4285F4', border: 'border-[#4285F4]' },
+    { label: 'Outstanding Receivables', value: `RS ${stats.totalOutstanding.toLocaleString()}`, color: '#EA4335', border: 'border-[#EA4335]' },
+    { label: 'Agency Headcount', value: staff.length, color: '#34A853', border: 'border-[#34A853]' },
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="bg-white p-8 rounded-xl border-l-[12px] border-[#4285F4] google-shadow flex flex-col md:flex-row justify-between items-center gap-6">
+    <div className="space-y-12 animate-in fade-in duration-700 font-sans">
+      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-8 md:p-12 rounded-[2.5rem] border border-[#dadce0] shadow-sm gap-8">
         <div>
-          <h2 className="text-3xl font-medium text-[#202124] tracking-tight uppercase">Operations Console</h2>
-          <p className="text-[#5f6368] font-medium text-sm uppercase tracking-wider mt-1">Global Financial Standing</p>
+          <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#202124] tracking-tight uppercase leading-none">Intelligence Hub</h2>
+          <p className="text-[#4285F4] font-semibold text-[10px] uppercase tracking-[0.3em] mt-2">Executive Summary & Stream Data</p>
         </div>
-        <button 
-          onClick={exportSummaryPDF}
-          className="bg-[#4285F4] text-white px-8 py-4 rounded-xl font-medium shadow-lg hover:bg-[#1967d2] transition-colors text-xs tracking-widest uppercase flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-          Export Summary PDF
-        </button>
+        <div className="flex items-center gap-4 bg-[#f8f9fa] px-6 py-3 rounded-2xl border border-[#dadce0]">
+           <span className="text-[10px] font-bold text-[#5f6368] uppercase tracking-widest">Global Status:</span>
+           <span className="text-[10px] font-bold text-[#34A853] uppercase tracking-widest">Optimal</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {kpis.map((card, i) => (
-          <div key={i} className={`p-8 bg-white rounded-xl border-b-8 ${card.border} google-shadow hover:bg-slate-50 transition-colors`}>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#5f6368] mb-2">{card.label}</p>
-            <p className="text-2xl font-semibold tracking-tight" style={{ color: card.color }}>
-              {formatCurrency(card.value)}
+          <div key={i} className={`p-10 bg-white rounded-[2rem] border-t-8 ${card.border} shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg`}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#bdc1c6] mb-4">{card.label}</p>
+            <p className="text-2xl md:text-3xl font-serif font-bold tracking-tighter" style={{ color: card.color }}>
+              {card.value}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-8 rounded-xl border border-[#dadce0] google-shadow">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="text-sm font-semibold text-[#202124] uppercase tracking-wider">Growth Velocity</h3>
-            <div className="flex gap-4">
-               <div className="flex items-center gap-2">
-                 <div className="w-3 h-3 bg-[#34A853] rounded-full"></div>
-                 <span className="text-[10px] font-medium text-[#5f6368] uppercase tracking-widest">INCOME</span>
-               </div>
-               <div className="flex items-center gap-2">
-                 <div className="w-3 h-3 bg-[#EA4335] rounded-full"></div>
-                 <span className="text-[10px] font-medium text-[#5f6368] uppercase tracking-widest">BURN</span>
-               </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 bg-white p-10 rounded-[2.5rem] border border-[#dadce0] shadow-sm">
+          <div className="flex justify-between items-center mb-12">
+            <h3 className="text-[10px] font-bold text-[#202124] uppercase tracking-[0.3em]">Capital Velocity</h3>
+            <div className="flex gap-3">
+               <div className="flex items-center gap-2"><div className="w-2 h-2 bg-[#4285F4] rounded-full"></div><span className="text-[9px] font-bold uppercase text-[#5f6368]">Growth</span></div>
             </div>
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#34A853" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#34A853" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f3f4" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#5f6368', fontSize: 11, fontWeight: '500'}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#5f6368', fontSize: 11, fontWeight: '500'}} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', fontWeight: '500' }} 
-                />
-                <Area type="monotone" dataKey="revenue" stroke="#34A853" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
-                <Area type="monotone" dataKey="burn" stroke="#EA4335" fillOpacity={0} strokeWidth={2} strokeDasharray="10 10" />
+              <AreaChart data={[
+                { name: 'WK 1', val: 4000 },
+                { name: 'WK 2', val: 3200 },
+                { name: 'WK 3', val: 5100 },
+                { name: 'WK 4', val: 8200 },
+              ]}>
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f3f4" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#bdc1c6', fontSize: 9, fontWeight: '700'}} />
+                <YAxis hide />
+                <Tooltip />
+                <Area type="monotone" dataKey="val" stroke="#202124" fill="#202124" fillOpacity={0.03} strokeWidth={4} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-[#202124] rounded-xl p-8 text-white shadow-2xl flex flex-col justify-between">
-           <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider mb-10 text-[#FBBC05]">Intelligence Feed</h3>
-              <div className="space-y-6">
-                 {[
-                   { msg: 'Invoice #AG-104 is Overdue', type: 'RED' },
-                   { msg: 'Monthly Payroll Disburses in 3d', type: 'YELLOW' },
-                   { msg: 'New Proposal Request Received', type: 'BLUE' }
-                 ].map((alert, i) => (
-                   <div key={i} className="flex items-start gap-4 p-5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
-                      <div className={`w-1.5 h-10 rounded-full ${alert.type === 'RED' ? 'bg-[#EA4335]' : alert.type === 'YELLOW' ? 'bg-[#FBBC05]' : 'bg-[#4285F4]'}`}></div>
-                      <p className="text-[12px] font-medium tracking-normal leading-tight">{alert.msg}</p>
-                   </div>
-                 ))}
-              </div>
+        <div className="bg-[#fcfdfe] border border-[#dadce0] rounded-[2.5rem] p-10 flex flex-col gap-10">
+           <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#4285F4]">Prioritized Flow</h3>
+           <div className="space-y-6">
+              {projects.length === 0 ? (
+                <div className="py-12 text-center opacity-30 text-[9px] font-bold uppercase tracking-widest">No Active Workload</div>
+              ) : (
+                projects.slice(0, 3).map((p, i) => (
+                  <div key={i} className="bg-white p-6 rounded-2xl border border-[#dadce0] shadow-sm flex flex-col gap-3 hover:border-black transition-colors">
+                     <p className="text-[9px] font-bold text-[#bdc1c6] uppercase tracking-widest">{p.clientName}</p>
+                     <p className="text-sm font-bold text-[#202124] uppercase tracking-tight leading-tight">{p.title}</p>
+                     <div className="w-full bg-[#f1f3f4] h-1.5 rounded-full mt-3">
+                        <div className="bg-[#202124] h-full rounded-full" style={{ width: `${p.progress}%` }}></div>
+                     </div>
+                  </div>
+                ))
+              )}
            </div>
-           <button className="w-full bg-[#34A853] py-5 rounded-xl font-medium text-xs tracking-widest uppercase shadow-lg hover:bg-[#2d9249] transition-all mt-10">AI Strategy Hub</button>
         </div>
       </div>
     </div>

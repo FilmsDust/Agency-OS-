@@ -1,101 +1,99 @@
 
-import React, { useState } from 'react';
-import { Transaction, Invoice } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Transaction, Invoice, Staff, TransactionType, InvoiceStatus } from '../types';
 import { getFinancialInsights } from '../services/geminiService';
 import { jsPDF } from 'jspdf';
 
 interface ReportsProps {
   transactions: Transaction[];
   invoices: Invoice[];
+  staff: Staff[];
 }
 
-const Reports: React.FC<ReportsProps> = ({ transactions, invoices }) => {
+const Reports: React.FC<ReportsProps> = ({ transactions, invoices, staff }) => {
   const [loading, setLoading] = useState(false);
   const [insight, setInsight] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'FAVOURITE' | 'ALL'>('ALL');
 
-  const generateAudit = async () => {
+  const reportCategories = [
+    { title: 'Sales', items: ['Sales Order Summary', 'Client Contribution Report', 'Overdue Receivables'], color: 'text-[#4285F4]' },
+    { title: 'Purchase', items: ['Vendor Purchase Records', 'Utility Expense Audit', 'Recurring Vendor Costs'], color: 'text-[#FBBC05]' },
+    { title: 'Inventory Report', items: ['Service Catalog Usage', 'Project Allocation Ratios'], color: 'text-[#34A853]' },
+    { title: 'Profit & Loss', items: ['Net Revenue Audit', 'Cash Burn Summary', 'EBITDA Insight'], color: 'text-[#EA4335]' },
+    { title: 'Tax', items: ['GST Liability Summary', 'Withholding Audit'], color: 'text-[#5f6368]' },
+    { title: 'Other', items: ['Team Payroll Analysis', 'AI Support History'], color: 'text-[#bdc1c6]' },
+  ];
+
+  const financials = useMemo(() => {
+    const cashOnHand = transactions.reduce((acc, t) => t.type === TransactionType.INCOME ? acc + t.amount : acc - t.amount, 0);
+    const receivables = invoices.filter(i => i.status !== InvoiceStatus.PAID).reduce((acc, i) => acc + i.total, 0);
+    const equity = cashOnHand + receivables;
+    return { cashOnHand, receivables, equity };
+  }, [transactions, invoices]);
+
+  const runAudit = async () => {
     setLoading(true);
     const result = await getFinancialInsights(transactions, invoices);
     setInsight(result);
     setLoading(false);
   };
 
-  const exportAuditPDF = () => {
-    if (!insight) return;
-    const doc = new jsPDF();
-    const blue = "#4285F4";
-    const margin = 20;
-
-    doc.setFillColor(blue);
-    doc.rect(0, 0, 210, 15, 'F');
-    doc.setTextColor(blue);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("AdvertsGen Executive Audit", margin, 35);
-    doc.setFontSize(9);
-    doc.setTextColor(150);
-    doc.text(`Strategic Financial Intelligence Report - ${new Date().toLocaleDateString()}`, margin, 42);
-
-    doc.setFontSize(10);
-    doc.setTextColor(50);
-    const splitText = doc.splitTextToSize(insight, 170);
-    doc.text(splitText, margin, 60);
-
-    doc.save(`AG_Audit_Report_${Date.now()}.pdf`);
-  };
-
   const formatPKR = (val: number) => `Rs. ${val.toLocaleString('en-PK')}`;
 
   return (
-    <div className="space-y-10">
-      <div className="bg-[#4285F4] rounded-3xl p-12 text-white relative overflow-hidden shadow-2xl">
-        <div className="max-w-2xl relative z-10">
-          <h2 className="text-4xl font-black mb-4 tracking-tighter">Senior Audit & Strategy</h2>
-          <p className="text-blue-100 mb-8 font-medium leading-relaxed">Run a complete automated financial audit for AdvertsGen.</p>
-          <button 
-            disabled={loading}
-            onClick={generateAudit}
-            className={`px-10 py-4 bg-white text-[#4285F4] rounded-2xl font-black shadow-xl flex items-center space-x-3 transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-          >
-            {loading ? <div className="w-5 h-5 border-4 border-[#4285F4] border-t-transparent animate-spin rounded-full"></div> : null}
-            <span className="uppercase text-xs tracking-widest">{loading ? 'Running Audit Logic...' : 'Initiate Full Audit'}</span>
-          </button>
-        </div>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex border-b border-[#dadce0] gap-10">
+        <button onClick={() => setActiveTab('FAVOURITE')} className={`pb-4 px-2 font-bold text-[11px] uppercase tracking-widest transition-all ${activeTab === 'FAVOURITE' ? 'border-b-4 border-[#4285F4] text-[#4285F4]' : 'text-[#bdc1c6]'}`}>Favourite</button>
+        <button onClick={() => setActiveTab('ALL')} className={`pb-4 px-2 font-bold text-[11px] uppercase tracking-widest transition-all ${activeTab === 'ALL' ? 'border-b-4 border-[#4285F4] text-[#4285F4]' : 'text-[#bdc1c6]'}`}>All Reports</button>
       </div>
 
-      {insight && (
-        <div className="bg-white p-12 rounded-[2.5rem] border-l-8 border-[#34A853] shadow-sm animate-in zoom-in duration-300">
-          <div className="flex justify-between items-center mb-10">
-            <div className="flex items-center space-x-4 text-[#34A853]">
-               <div className="w-10 h-10 bg-[#34A853]/10 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
-               </div>
-               <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Audit Findings</h3>
+      {activeTab === 'ALL' && (
+        <div className="space-y-4">
+          {reportCategories.map((cat, i) => (
+            <div key={i} className="bg-white rounded-xl border border-[#dadce0] overflow-hidden hover:shadow-md transition-all group">
+              <button className="w-full flex justify-between items-center p-6 text-left focus:bg-[#f8f9fa]">
+                <div className="flex items-center gap-4">
+                  <div className={`w-1 h-6 rounded-full ${cat.color.replace('text', 'bg')}`}></div>
+                  <span className="font-bold text-sm text-[#202124] uppercase tracking-tight">{cat.title}</span>
+                </div>
+                <svg className="w-5 h-5 text-[#bdc1c6] group-hover:text-[#4285F4] transition-colors" fill="currentColor" viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>
+              </button>
+              <div className="px-10 pb-6 space-y-3 opacity-0 group-hover:opacity-100 hidden group-hover:block animate-in slide-in-from-top-2">
+                {cat.items.map((item, j) => (
+                  <div key={j} className="flex items-center justify-between py-2 border-b border-[#f1f3f4] last:border-0 cursor-pointer hover:text-[#4285F4]">
+                    <span className="text-[11px] font-medium text-[#5f6368] uppercase tracking-wider">{item}</span>
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                  </div>
+                ))}
+              </div>
             </div>
-            <button onClick={exportAuditPDF} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2">
-               Download Report PDF
-            </button>
-          </div>
-          <div className="prose max-w-none text-slate-700 leading-loose whitespace-pre-wrap font-medium">{insight}</div>
+          ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white p-10 rounded-[2rem] border-t-8 border-[#FBBC05] shadow-sm">
-          <h4 className="font-black text-slate-900 mb-8 text-xs uppercase tracking-widest">Balance Sheet Audit</h4>
-          <div className="space-y-4">
-            {[
-              { label: 'Operating Assets', value: 1250400, color: 'text-slate-600' },
-              { label: 'Equity Value', value: 1550400, color: 'text-[#34A853]', bold: true },
-            ].map((row, i) => (
-              <div key={i} className={`flex justify-between p-4 rounded-2xl ${row.bold ? 'bg-slate-50 border border-slate-100' : ''}`}>
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{row.label}</span>
-                <span className={`text-sm font-black ${row.color}`}>{formatPKR(Math.abs(row.value))}</span>
-              </div>
-            ))}
-          </div>
+      {activeTab === 'FAVOURITE' && (
+        <div className="bg-white p-20 rounded-3xl border border-dashed border-[#dadce0] flex flex-col items-center justify-center text-center opacity-50">
+          <svg className="w-16 h-16 text-[#bdc1c6] mb-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#5f6368]">No reports favorited yet</p>
         </div>
+      )}
+
+      <div className="bg-[#4285F4]/5 p-10 rounded-3xl border border-[#4285F4]/20 flex flex-col md:flex-row items-center justify-between gap-10">
+        <div className="max-w-xl">
+           <h3 className="text-xl font-bold uppercase text-[#202124] tracking-tight mb-2">Synthetic Audit Insights</h3>
+           <p className="text-xs text-[#5f6368] leading-relaxed">Let AdvertsGen AI analyze your general ledger and invoice stream to find hidden operational opportunities.</p>
+        </div>
+        <button onClick={runAudit} disabled={loading} className="bg-[#4285F4] text-white px-10 py-5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-[#1967d2] transition-all active:scale-95 disabled:opacity-50">
+          {loading ? 'Synthesizing...' : 'Run Analysis'}
+        </button>
       </div>
+
+      {insight && (
+        <div className="bg-white p-10 rounded-2xl border border-[#34A853] shadow-lg animate-in zoom-in duration-300">
+           <h4 className="text-[10px] font-black uppercase tracking-widest text-[#34A853] mb-6">AI Strategic Findings</h4>
+           <div className="text-sm text-[#3c4043] leading-relaxed whitespace-pre-wrap font-medium">{insight}</div>
+        </div>
+      )}
     </div>
   );
 };

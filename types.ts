@@ -10,9 +10,10 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   date: string;
-  category: 'PROJECT' | 'PAYROLL' | 'OFFICE' | 'PETTY_CASH' | 'MARKETING' | 'TAX' | 'EQUIPMENT';
+  category: 'PROJECT' | 'PAYROLL' | 'OFFICE' | 'PETTY_CASH' | 'MARKETING' | 'TAX' | 'EQUIPMENT' | 'VENDOR_PURCHASE';
   projectId?: string;
   entityName?: string;
+  receiptImage?: string;
 }
 
 export enum InvoiceStatus {
@@ -41,11 +42,13 @@ export interface Invoice {
   items: InvoiceItem[];
   status: InvoiceStatus;
   taxRate: number;
+  discountAmount: number;
   advancePayment: number;
   paidAmount: number;
   total: number;
-  currency: 'PKR' | 'USD' | 'EUR';
+  currency: 'PKR' | 'USD';
   notes?: string;
+  signature?: string;
 }
 
 export interface Client {
@@ -57,6 +60,13 @@ export interface Client {
   status: 'ACTIVE' | 'INACTIVE';
 }
 
+export interface Product {
+  id: string;
+  name: string;
+  basePrice: number;
+  category: string;
+}
+
 export interface Staff {
   id: string;
   name: string;
@@ -66,6 +76,27 @@ export interface Staff {
   joiningDate: string;
   status: 'ACTIVE' | 'ON_LEAVE' | 'EXITED';
   paymentHistory: { month: string; amount: number; date: string }[];
+}
+
+export interface Project {
+  id: string;
+  clientId: string;
+  clientName: string;
+  title: string;
+  budget: number;
+  status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED';
+  progress: number;
+  deadline: string;
+}
+
+export interface Lead {
+  id: string;
+  companyName: string;
+  contactName: string;
+  value: number;
+  status: 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'NEGOTIATION' | 'WON' | 'LOST';
+  source: string;
+  dateAdded: string;
 }
 
 export interface ProposalSection {
@@ -88,4 +119,14 @@ export interface Proposal {
   advanceAmount: number;
 }
 
-export type View = 'DASHBOARD' | 'INVOICES' | 'TRANSACTIONS' | 'REPORTS' | 'PROPOSALS' | 'STAFF' | 'CLIENTS' | 'ASSISTANT';
+export interface AgencySettings {
+  name: string;
+  tagline: string;
+  phone: string;
+  email: string;
+  address: string;
+  bankDetails: string;
+  gstNumber: string;
+}
+
+export type View = 'DASHBOARD' | 'CRM' | 'PROJECTS' | 'INVOICES' | 'TRANSACTIONS' | 'REPORTS' | 'PROPOSALS' | 'STAFF' | 'CLIENTS' | 'ASSISTANT' | 'SETTINGS' | 'PRODUCTS';
